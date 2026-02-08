@@ -26,6 +26,7 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
       props.put("spring.datasource.url", jdbcUrl);
       props.putIfAbsent("spring.datasource.driver-class-name", driverFor(jdbcUrl));
       applyCredentials(environment, props);
+      applyProfile(environment, props);
       applyDefaults(environment, props);
       return;
     }
@@ -34,6 +35,7 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
     if (StringUtils.hasText(databaseUrl)) {
       applyDatabaseUrl(environment, databaseUrl, props);
       applyCredentials(environment, props);
+      applyProfile(environment, props);
       applyDefaults(environment, props);
       return;
     }
@@ -90,6 +92,13 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
   private void applyDefaults(ConfigurableEnvironment environment, Map<String, Object> props) {
     if (!props.isEmpty()) {
       environment.getPropertySources().addFirst(new MapPropertySource("autoDatabase", props));
+    }
+  }
+
+  private void applyProfile(ConfigurableEnvironment environment, Map<String, Object> props) {
+    String active = environment.getProperty("spring.profiles.active");
+    if (!StringUtils.hasText(active)) {
+      props.putIfAbsent("spring.profiles.active", "prod");
     }
   }
 
