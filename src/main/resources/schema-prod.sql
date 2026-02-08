@@ -1,31 +1,27 @@
-DROP TABLE IF EXISTS exploite;
-DROP TABLE IF EXISTS salle;
-DROP TABLE IF EXISTS batiment;
-DROP TABLE IF EXISTS composante;
-DROP TABLE IF EXISTS campus;
-DROP TABLE IF EXISTS osm_building;
-DROP TABLE IF EXISTS campus_boundary;
-
-CREATE TABLE campus (
+CREATE TABLE IF NOT EXISTS campus (
   nomC VARCHAR(16),
   ville VARCHAR(20),
   CONSTRAINT campus_pk PRIMARY KEY (nomC)
 );
 
-CREATE TABLE batiment (
+CREATE TABLE IF NOT EXISTS batiment (
   codeB VARCHAR(16),
   name TEXT,
   osm_id BIGINT,
   building_number INTEGER,
   anneeC INTEGER,
-  latitude DOUBLE,
-  longitude DOUBLE,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
   campus VARCHAR(16),
   CONSTRAINT batiment_pk PRIMARY KEY (codeB),
   CONSTRAINT campus_fk FOREIGN KEY (campus) REFERENCES campus(nomC) ON DELETE CASCADE
 );
 
-CREATE TABLE salle (
+ALTER TABLE batiment ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE batiment ADD COLUMN IF NOT EXISTS osm_id BIGINT;
+ALTER TABLE batiment ADD COLUMN IF NOT EXISTS building_number INTEGER;
+
+CREATE TABLE IF NOT EXISTS salle (
   numS VARCHAR(16),
   capacite INTEGER,
   typeS VARCHAR(12),
@@ -37,14 +33,14 @@ CREATE TABLE salle (
   CONSTRAINT dom_typeS CHECK (typeS IN ('amphi','sc','td','tp','numerique'))
 );
 
-CREATE TABLE composante (
+CREATE TABLE IF NOT EXISTS composante (
   acronyme VARCHAR(8),
   nom VARCHAR(50),
   responsable VARCHAR(30),
   CONSTRAINT composante_pk PRIMARY KEY (acronyme)
 );
 
-CREATE TABLE exploite (
+CREATE TABLE IF NOT EXISTS exploite (
   team VARCHAR(8),
   building VARCHAR(16),
   CONSTRAINT exploite_fk1 FOREIGN KEY (team) REFERENCES composante(acronyme) ON DELETE CASCADE,
@@ -52,17 +48,19 @@ CREATE TABLE exploite (
   CONSTRAINT exploite_pk PRIMARY KEY (team, building)
 );
 
-CREATE TABLE osm_building (
+CREATE TABLE IF NOT EXISTS osm_building (
   osm_id BIGINT,
   name TEXT,
   campus VARCHAR(32),
-  latitude DOUBLE,
-  longitude DOUBLE,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
   tags TEXT,
   CONSTRAINT osm_building_pk PRIMARY KEY (osm_id)
 );
 
-CREATE TABLE campus_boundary (
+ALTER TABLE osm_building ALTER COLUMN name TYPE TEXT;
+
+CREATE TABLE IF NOT EXISTS campus_boundary (
   campus VARCHAR(32),
   source VARCHAR(64),
   geojson TEXT,

@@ -1,6 +1,7 @@
 package fr.umontpellier.campus.service;
 
 import fr.umontpellier.campus.domain.Salle;
+import fr.umontpellier.campus.domain.Batiment;
 import fr.umontpellier.campus.domain.OsmBuilding;
 import fr.umontpellier.campus.dto.IcsEvent;
 import fr.umontpellier.campus.dto.ItineraryLeg;
@@ -35,12 +36,15 @@ public class ItineraryService {
   private static final DateTimeFormatter TIME_LABEL = DateTimeFormatter.ofPattern("HH:mm");
 
   private final SalleService salleService;
+  private final BatimentService batimentService;
   private final OsmBuildingService osmBuildingService;
   private final DistanceService distanceService;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  public ItineraryService(SalleService salleService, OsmBuildingService osmBuildingService, DistanceService distanceService) {
+  public ItineraryService(SalleService salleService, BatimentService batimentService,
+      OsmBuildingService osmBuildingService, DistanceService distanceService) {
     this.salleService = salleService;
+    this.batimentService = batimentService;
     this.osmBuildingService = osmBuildingService;
     this.distanceService = distanceService;
   }
@@ -64,9 +68,10 @@ public class ItineraryService {
       return result;
     }
 
+    Map<String, Map<Integer, Batiment>> batimentIndex = buildBatimentIndex();
     Map<String, Map<Integer, List<OsmBuilding>>> osmIndex = buildOsmIndex();
     Map<String, Salle> salleMap = buildSalleMap();
-    String preferredCampus = inferPreferredCampus(events, osmIndex);
+    String preferredCampus = inferPreferredCampus(events, batimentIndex, osmIndex);
     List<IcsEvent> dayEvents = new ArrayList<>();
     for (IcsEvent e : events) {
       if (e.getStart() == null) {
@@ -77,7 +82,7 @@ public class ItineraryService {
         continue;
       }
       IcsEvent copy = new IcsEvent(e);
-      matchLocation(copy, osmIndex, salleMap, preferredCampus);
+      matchLocation(copy, batimentIndex, osmIndex, salleMap, preferredCampus);
       dayEvents.add(copy);
     }
 
@@ -124,8 +129,9 @@ public class ItineraryService {
     return result;
   }
 
-  private String inferPreferredCampus(List<IcsEvent> events, Map<String, Map<Integer, List<OsmBuilding>>> osmIndex) {
-    if (events == null || events.isEmpty() || osmIndex.isEmpty()) {
+  private String inferPreferredCampus(List<IcsEvent> events, Map<String, Map<Integer, Batiment>> batimentIndex,
+      Map<String, Map<Integer, List<OsmBuilding>>> osmIndex) {
+    if (events == null || events.isEmpty()) {
       return null;
     }
     Map<String, Integer> counts = new HashMap<>();
@@ -140,6 +146,15 @@ public class ItineraryService {
         Integer number = extractBuildingNumber(part);
         if (number == null) {
           continue;
+        }
+        for (Map.Entry<String, Map<Integer, Batiment>> entry : batimentIndex.entrySet()) {
+          String campus = entry.getKey();
+          if (campus == null || campus.isBlank()) {
+            continue;
+          }
+          if (entry.getValue().containsKey(number)) {
+            counts.merge(campus, 1, Integer::sum);
+          }
         }
         for (Map.Entry<String, Map<Integer, List<OsmBuilding>>> entry : osmIndex.entrySet()) {
           String campus = entry.getKey();
@@ -172,8 +187,9 @@ public class ItineraryService {
     return candidates.get(0);
   }
 
-  private void matchLocation(IcsEvent event, Map<String, Map<Integer, List<OsmBuilding>>> osmIndex,
-      Map<String, Salle> salleMap, String preferredCampus) {
+  private void matchLocation(IcsEvent event, Map<String, Map<Integer, Batiment>> batimentIndex,
+      Map<String, Map<Integer, List<OsmBuilding>>> osmIndex, Map<String, Salle> salleMap,
+      String preferredCampus) {
     String raw = event.getRawLocation();
     if (!StringUtils.hasText(raw)) {
       event.addWarning("Lieu manquant dans l'emploi du temps");
@@ -226,6 +242,17 @@ public class ItineraryService {
 
       if (buildingNumber != null) {
         String campusHint = event.getCampusName() != null ? event.getCampusName() : preferredCampus;
+        Batiment batiment = findBatiment(campusHint, buildingNumber, batimentIndex);
+        if (batiment != null) {
+          applyBatiment(event, batiment, buildingNumber);
+          if (event.getLatitude() == null || event.getLongitude() == null) {
+            event.addWarning("Coordonnées manquantes pour le bâtiment.");
+          }
+          if (salle == null) {
+            event.addWarning("Salle non trouvée, bâtiment estimé via le numéro.");
+          }
+          return;
+        }
         OsmBuilding osm = findOsmBuilding(campusHint, buildingNumber, osmIndex);
         if (osm != null) {
           applyOsmBuilding(event, osm, buildingNumber);
@@ -254,6 +281,51 @@ public class ItineraryService {
     if (building.getLatitude() == null || building.getLongitude() == null) {
       event.addWarning("Coordonnées manquantes pour le bâtiment OSM");
     }
+  }
+
+  private void applyBatiment(IcsEvent event, Batiment batiment, Integer buildingNumber) {
+    String label = batiment.getName();
+    if (!StringUtils.hasText(label)) {
+      label = batiment.getCodeB();
+    }
+    if (buildingNumber != null && !StringUtils.hasText(label)) {
+      label = "Bâtiment " + buildingNumber;
+    }
+    event.setBuildingCode(label);
+    if (batiment.getCampus() != null) {
+      event.setCampusName(batiment.getCampus().getNomC());
+    }
+    event.setLatitude(batiment.getLatitude());
+    event.setLongitude(batiment.getLongitude());
+  }
+
+  private Map<String, Map<Integer, Batiment>> buildBatimentIndex() {
+    Map<String, Map<Integer, Batiment>> index = new HashMap<>();
+    for (Batiment b : batimentService.findAll()) {
+      if (b.getBuildingNumber() == null) {
+        continue;
+      }
+      String campus = b.getCampus() != null ? b.getCampus().getNomC() : "";
+      index.computeIfAbsent(campus, k -> new HashMap<>())
+          .putIfAbsent(b.getBuildingNumber(), b);
+    }
+    return index;
+  }
+
+  private Batiment findBatiment(String campus, int number, Map<String, Map<Integer, Batiment>> index) {
+    if (campus != null && index.containsKey(campus)) {
+      Batiment b = index.get(campus).get(number);
+      if (b != null) {
+        return b;
+      }
+    }
+    for (Map<Integer, Batiment> byNumber : index.values()) {
+      Batiment b = byNumber.get(number);
+      if (b != null) {
+        return b;
+      }
+    }
+    return null;
   }
 
   private String normalizeLocation(String raw) {

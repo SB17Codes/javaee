@@ -20,6 +20,8 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -27,6 +29,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class OsmBuildingService {
+  private static final Pattern NUMBER_IN_TEXT = Pattern.compile("\\b(\\d{1,3})\\b");
   private final OsmBuildingRepository osmBuildingRepository;
   private final ObjectMapper objectMapper;
   private final HttpClient httpClient = HttpClient.newHttpClient();
@@ -56,6 +59,34 @@ public class OsmBuildingService {
 
   public String displayNameForMap(OsmBuilding building) {
     return displayNameInternal(building, false);
+  }
+
+  public Integer extractBuildingNumber(OsmBuilding building) {
+    if (building == null) {
+      return null;
+    }
+    Map<String, Object> tags = parseTags(building);
+    Integer ref = extractNumericRef(tags);
+    if (ref != null) {
+      return ref;
+    }
+    List<String> candidates = new ArrayList<>();
+    if (StringUtils.hasText(building.getName())) {
+      candidates.add(building.getName());
+    }
+    for (String key : List.of("short_name", "name", "alt_name", "loc_name")) {
+      Object value = tags.get(key);
+      if (value != null) {
+        candidates.add(String.valueOf(value));
+      }
+    }
+    for (String candidate : candidates) {
+      Integer number = extractNumberFromText(candidate);
+      if (number != null) {
+        return number;
+      }
+    }
+    return null;
   }
 
   public boolean isGenericLabel(String label) {
@@ -399,5 +430,27 @@ public class OsmBuildingService {
     } catch (Exception ignored) {
     }
     return "";
+  }
+
+  private Integer extractNumberFromText(String candidate) {
+    if (!StringUtils.hasText(candidate)) {
+      return null;
+    }
+    String normalized = normalizeLabel(candidate);
+    Matcher matcher = NUMBER_IN_TEXT.matcher(normalized);
+    if (matcher.find()) {
+      try {
+        return Integer.parseInt(matcher.group(1));
+      } catch (NumberFormatException ignored) {
+      }
+    }
+    String fallback = candidate.replaceAll("[^0-9]", "");
+    if (!fallback.isBlank()) {
+      try {
+        return Integer.parseInt(fallback);
+      } catch (NumberFormatException ignored) {
+      }
+    }
+    return null;
   }
 }

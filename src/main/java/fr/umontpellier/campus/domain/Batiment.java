@@ -18,6 +18,15 @@ public class Batiment {
   @Column(name = "codeB", length = 16)
   private String codeB;
 
+  @Column(name = "name", columnDefinition = "TEXT")
+  private String name;
+
+  @Column(name = "osm_id")
+  private Long osmId;
+
+  @Column(name = "building_number")
+  private Integer buildingNumber;
+
   @Column(name = "anneeC")
   private Integer anneeC;
 
@@ -47,12 +56,48 @@ public class Batiment {
     this.campus = campus;
   }
 
+  public Batiment(String codeB, String name, Long osmId, Integer buildingNumber,
+                  Integer anneeC, Double latitude, Double longitude, Campus campus) {
+    this.codeB = codeB;
+    this.name = name;
+    this.osmId = osmId;
+    this.buildingNumber = buildingNumber;
+    this.anneeC = anneeC;
+    this.latitude = latitude;
+    this.longitude = longitude;
+    this.campus = campus;
+  }
+
   public String getCodeB() {
     return codeB;
   }
 
   public void setCodeB(String codeB) {
     this.codeB = codeB;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public Long getOsmId() {
+    return osmId;
+  }
+
+  public void setOsmId(Long osmId) {
+    this.osmId = osmId;
+  }
+
+  public Integer getBuildingNumber() {
+    return buildingNumber;
+  }
+
+  public void setBuildingNumber(Integer buildingNumber) {
+    this.buildingNumber = buildingNumber;
   }
 
   public Integer getAnneeC() {

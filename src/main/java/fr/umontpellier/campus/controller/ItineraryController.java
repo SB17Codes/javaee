@@ -5,6 +5,7 @@ import fr.umontpellier.campus.dto.ItineraryResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.umontpellier.campus.service.IcsParserService;
+import fr.umontpellier.campus.service.IcsRoomImportService;
 import fr.umontpellier.campus.service.ItineraryService;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
@@ -24,15 +25,17 @@ import org.springframework.web.multipart.MultipartFile;
 public class ItineraryController {
   private final IcsParserService icsParserService;
   private final ItineraryService itineraryService;
+  private final IcsRoomImportService icsRoomImportService;
   private final ObjectMapper objectMapper;
 
   @Value("${app.mapbox.token:}")
   private String mapboxToken;
 
   public ItineraryController(IcsParserService icsParserService, ItineraryService itineraryService,
-      ObjectMapper objectMapper) {
+      IcsRoomImportService icsRoomImportService, ObjectMapper objectMapper) {
     this.icsParserService = icsParserService;
     this.itineraryService = itineraryService;
+    this.icsRoomImportService = icsRoomImportService;
     this.objectMapper = objectMapper;
   }
 
@@ -64,6 +67,7 @@ public class ItineraryController {
       return "itinerary";
     }
 
+    icsRoomImportService.importRooms(events);
     session.setAttribute("icsEvents", events);
     populateCommon(model, session);
     model.addAttribute("uploadedCount", events.size());

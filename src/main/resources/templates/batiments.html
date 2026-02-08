@@ -14,6 +14,8 @@
         <thead>
         <tr>
           <th>Code</th>
+          <th>Nom</th>
+          <th>Numéro</th>
           <th>Année de construction</th>
           <th>Latitude</th>
           <th>Longitude</th>
@@ -23,13 +25,15 @@
         <tbody>
         <tr th:each="b : ${batimentList}">
           <td th:text="${b.codeB}" style="font-weight: 700; color: var(--primary);"></td>
+          <td th:text="${b.name}"></td>
+          <td th:text="${b.buildingNumber}"></td>
           <td th:text="${b.anneeC}"></td>
           <td th:text="${b.latitude}"></td>
           <td th:text="${b.longitude}"></td>
           <td th:text="${b.campus != null ? b.campus.nomC : '-'}"></td>
         </tr>
         <tr th:if="${#lists.isEmpty(batimentList)}">
-          <td colspan="5" class="text-center small" style="color: var(--text-muted);">Aucun bâtiment trouvé</td>
+          <td colspan="7" class="text-center small" style="color: var(--text-muted);">Aucun bâtiment trouvé</td>
         </tr>
         </tbody>
       </table>

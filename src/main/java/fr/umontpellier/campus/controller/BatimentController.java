@@ -53,7 +53,14 @@ public class BatimentController {
     if (campus == null) {
       return "redirect:/batiments?error=campus";
     }
-    batimentService.save(new Batiment(codeB, anneeC, latitude, longitude, campus));
+    Batiment existing = batimentService.findById(codeB).orElse(null);
+    Batiment updated = existing != null ? existing : new Batiment();
+    updated.setCodeB(codeB);
+    updated.setAnneeC(anneeC);
+    updated.setLatitude(latitude);
+    updated.setLongitude(longitude);
+    updated.setCampus(campus);
+    batimentService.save(updated);
     return "redirect:/batiments";
   }
 

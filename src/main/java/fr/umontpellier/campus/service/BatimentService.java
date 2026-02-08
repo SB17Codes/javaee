@@ -23,6 +23,13 @@ public class BatimentService {
     return batimentRepository.findById(codeB);
   }
 
+  public List<Batiment> findByCampusAndBuildingNumber(String campus, Integer buildingNumber) {
+    if (campus == null || buildingNumber == null) {
+      return List.of();
+    }
+    return batimentRepository.findByCampus_NomCAndBuildingNumber(campus, buildingNumber);
+  }
+
   public Batiment save(Batiment batiment) {
     return batimentRepository.save(batiment);
   }
