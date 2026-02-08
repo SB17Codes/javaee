@@ -13,7 +13,7 @@ CREATE TABLE campus (
 );
 
 CREATE TABLE batiment (
-  codeB VARCHAR(16),
+  codeB VARCHAR(32),
   name TEXT,
   osm_id BIGINT,
   building_number INTEGER,
@@ -31,7 +31,7 @@ CREATE TABLE salle (
   typeS VARCHAR(12),
   acces VARCHAR(3),
   etage VARCHAR(3),
-  batiment VARCHAR(16),
+  batiment VARCHAR(32),
   CONSTRAINT salle_pk PRIMARY KEY (numS),
   CONSTRAINT batiment_fk FOREIGN KEY (batiment) REFERENCES batiment(codeB) ON DELETE CASCADE,
   CONSTRAINT dom_typeS CHECK (typeS IN ('amphi','sc','td','tp','numerique'))
@@ -46,7 +46,7 @@ CREATE TABLE composante (
 
 CREATE TABLE exploite (
   team VARCHAR(8),
-  building VARCHAR(16),
+  building VARCHAR(32),
   CONSTRAINT exploite_fk1 FOREIGN KEY (team) REFERENCES composante(acronyme) ON DELETE CASCADE,
   CONSTRAINT exploite_fk2 FOREIGN KEY (building) REFERENCES batiment(codeB) ON DELETE CASCADE,
   CONSTRAINT exploite_pk PRIMARY KEY (team, building)

@@ -15,7 +15,7 @@ import java.util.List;
 @Table(name = "batiment")
 public class Batiment {
   @Id
-  @Column(name = "codeB", length = 16)
+  @Column(name = "codeB", length = 32)
   private String codeB;
 
   @Column(name = "name", columnDefinition = "TEXT")
