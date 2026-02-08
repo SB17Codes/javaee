@@ -6,9 +6,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -32,10 +31,13 @@ public class SecurityConfig {
                 "/distance",
                 "/map",
                 "/itinerary",
+                "/permissions",
                 "/api/batiments/geojson",
                 "/api/osm-buildings/geojson",
                 "/api/campus-boundaries/geojson")
             .hasAnyRole("ADMIN", "MANAGER", "TEACHER", "STUDENT")
+            .requestMatchers("/admin/users", "/admin/users/**")
+            .hasRole("ADMIN")
             .requestMatchers(HttpMethod.POST,
                 "/campus/delete",
                 "/batiments/delete",
@@ -67,12 +69,7 @@ public class SecurityConfig {
   }
 
   @Bean
-  public UserDetailsService users() {
-    return new InMemoryUserDetailsManager(
-        User.withUsername("admin").password("{noop}admin").roles("ADMIN").build(),
-        User.withUsername("manager").password("{noop}manager").roles("MANAGER").build(),
-        User.withUsername("teacher").password("{noop}teacher").roles("TEACHER").build(),
-        User.withUsername("student").password("{noop}student").roles("STUDENT").build()
-    );
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
   }
 }

@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS exploite;
-DROP TABLE IF EXISTS salle;
 DROP TABLE IF EXISTS batiment;
 DROP TABLE IF EXISTS composante;
+DROP TABLE IF EXISTS app_user;
 DROP TABLE IF EXISTS campus;
 DROP TABLE IF EXISTS osm_building;
 DROP TABLE IF EXISTS campus_boundary;
@@ -42,6 +42,16 @@ CREATE TABLE composante (
   nom VARCHAR(50),
   responsable VARCHAR(30),
   CONSTRAINT composante_pk PRIMARY KEY (acronyme)
+);
+
+CREATE TABLE app_user (
+  id BIGINT AUTO_INCREMENT,
+  username VARCHAR(64) UNIQUE,
+  password_hash VARCHAR(255),
+  role VARCHAR(32),
+  enabled BOOLEAN,
+  created_at TIMESTAMP,
+  CONSTRAINT app_user_pk PRIMARY KEY (id)
 );
 
 CREATE TABLE exploite (

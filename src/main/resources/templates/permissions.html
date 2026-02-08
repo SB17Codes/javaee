@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Permissions')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+
+<main>
+  <div class="card">
+    <h2>Vos permissions</h2>
+    <p class="small">Role actuel: <strong th:text="${currentRole}">ROLE</strong></p>
+    <ul>
+      <li th:each="action : ${allowedActions}" th:text="${action}">Action</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Matrice des roles</h2>
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th th:each="action : ${permissionActions}" th:text="${action}">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="entry : ${permissionMatrix}">
+            <td th:text="${entry.key}">ROLE</td>
+            <td th:each="allowed : ${entry.value}" th:text="${allowed} ? 'Oui' : 'Non'">Oui</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</body>
+</html>

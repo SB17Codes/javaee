@@ -51,6 +51,16 @@
         <p class="small">Visualisation geographique des batiments.</p>
         <a th:href="@{/map}">Ouvrir</a>
       </div>
+      <div class="card">
+        <h3>Permissions</h3>
+        <p class="small">Voir les droits associes a votre role.</p>
+        <a th:href="@{/permissions}">Ouvrir</a>
+      </div>
+      <div class="card" sec:authorize="hasRole('ADMIN')">
+        <h3>Gestion utilisateurs</h3>
+        <p class="small">Creer, activer ou changer les roles.</p>
+        <a th:href="@{/admin/users}">Ouvrir</a>
+      </div>
     </div>
   </div>
 </main>

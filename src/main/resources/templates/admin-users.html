@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Gestion des Utilisateurs')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+
+<main>
+  <div class="card" th:if="${errorMessage}">
+    <strong>Erreur:</strong> <span th:text="${errorMessage}">Erreur</span>
+  </div>
+
+  <div class="card" th:if="${successMessage}">
+    <strong>Info:</strong> <span th:text="${successMessage}">OK</span>
+  </div>
+
+  <div class="card" th:if="${generatedPassword}">
+    <h2>Mot de passe genere</h2>
+    <p class="small">Utilisateur: <strong th:text="${createdUser}">user</strong></p>
+    <p>Mot de passe (a noter): <strong th:text="${generatedPassword}">password</strong></p>
+  </div>
+
+  <div class="card">
+    <h2>Creer un utilisateur</h2>
+    <form th:action="@{/admin/users/create}" method="post">
+      <label for="username">Nom d'utilisateur</label>
+      <input id="username" name="username" type="text" required />
+
+      <label for="role">Role</label>
+      <select id="role" name="role">
+        <option th:each="r : ${roles}" th:value="${r}" th:text="${r}">ROLE</option>
+      </select>
+
+      <button type="submit"><i class="fas fa-user-plus"></i> Creer</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Utilisateurs</h2>
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Actif</th>
+            <th>Creation</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="u : ${users}">
+            <td th:text="${u.username}">user</td>
+            <td th:text="${u.role}">ROLE</td>
+            <td th:text="${u.enabled} ? 'Oui' : 'Non'">Oui</td>
+            <td th:text="${u.createdAt}">-</td>
+            <td>
+              <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                <form th:action="@{/admin/users/role}" method="post" style="display:flex; gap:0.5rem; align-items:center;">
+                  <input type="hidden" name="id" th:value="${u.id}" />
+                  <select name="role" style="width:auto; margin:0;">
+                    <option th:each="r : ${roles}" th:value="${r}" th:text="${r}" th:selected="${r} == ${u.role}">ROLE</option>
+                  </select>
+                  <button type="submit" style="width:auto; padding:0.5rem 0.75rem;">
+                    <i class="fas fa-sync"></i> Role
+                  </button>
+                </form>
+
+                <form th:action="@{/admin/users/toggle}" method="post">
+                  <input type="hidden" name="id" th:value="${u.id}" />
+                  <button type="submit" style="width:auto; padding:0.5rem 0.75rem;">
+                    <i class="fas fa-toggle-on"></i>
+                    <span th:text="${u.enabled} ? 'Desactiver' : 'Activer'">Activer</span>
+                  </button>
+                </form>
+
+                <form th:action="@{/admin/users/delete}" method="post">
+                  <input type="hidden" name="id" th:value="${u.id}" />
+                  <button type="submit" style="width:auto; padding:0.5rem 0.75rem; background: var(--danger);">
+                    <i class="fas fa-trash"></i> Supprimer
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small" style="margin-top: 1rem;">
+      Admins actifs: <strong th:text="${enabledAdmins}">0</strong>
+    </p>
+  </div>
+</main>
+</body>
+</html>
