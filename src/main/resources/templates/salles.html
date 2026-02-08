@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Gestion des Salles')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+
+<main>
+  <a class="small" th:href="@{/data}">← Back to Data Hub</a>
+
+<div class="card">
+    <h2>Liste des Salles</h2>
+    <div class="table-container">
+      <table class="table">
+        <thead>
+        <tr>
+          <th>Numéro</th>
+          <th>Capacité</th>
+          <th>Type</th>
+          <th>Accès PMR</th>
+          <th>Étage</th>
+          <th>Bâtiment</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${salleList}">
+          <td th:text="${s.numS}" style="font-weight: 700; color: var(--primary);"></td>
+          <td th:text="${s.capacite}"></td>
+          <td>
+             <span th:if="${s.typeS != null}" 
+                   th:text="${s.typeS.dbValue}"
+                   style="background: var(--text); color: var(--surface); padding: 2px 6px; font-size: 0.8rem; text-transform: uppercase;">
+             </span>
+          </td>
+          <td th:text="${s.acces}"></td>
+          <td th:text="${s.etage}"></td>
+          <td th:text="${s.batiment != null ? s.batiment.codeB : '-'}"></td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(salleList)}">
+          <td colspan="6" class="text-center small" style="color: var(--text-muted);">Aucune salle trouvée</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid" sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+    <div class="card">
+      <h3>Ajouter une Salle</h3>
+      <form th:action="@{/salles/create}" method="post">
+        <label for="numS">Numéro de Salle</label>
+        <input id="numS" name="numS" placeholder="Ex: 101" required />
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label for="capacite">Capacité</label>
+            <input id="capacite" name="capacite" type="number" placeholder="Ex: 50" />
+          </div>
+          <div>
+            <label for="etage">Étage</label>
+            <input id="etage" name="etage" placeholder="Ex: 1" />
+          </div>
+        </div>
+
+        <label for="typeS">Type</label>
+        <select id="typeS" name="typeS" required>
+          <option value="" disabled selected>Choisir le type</option>
+          <option th:each="t : ${typeSalleList}" th:value="${t}" th:text="${t.dbValue}"></option>
+        </select>
+        
+        <label for="acces">Accès PMR (oui/non)</label>
+        <select id="acces" name="acces">
+          <option value="oui">Oui</option>
+          <option value="non">Non</option>
+        </select>
+        
+        <label for="batimentCode">Bâtiment</label>
+        <select id="batimentCode" name="batimentCode" required>
+          <option value="" disabled selected>Choisir un bâtiment</option>
+          <option th:each="b : ${batimentList}" th:value="${b.codeB}" th:text="${b.codeB}"></option>
+        </select>
+        
+        <button type="submit"><i class="fas fa-plus"></i> Créer</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Modifier une Salle</h3>
+      <form th:action="@{/salles/update}" method="post">
+        <label for="numSUpdate">Numéro</label>
+        <input id="numSUpdate" name="numS" placeholder="Numéro existant" required />
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+           <div>
+            <label for="capaciteUpdate">Capacité</label>
+            <input id="capaciteUpdate" name="capacite" type="number" />
+           </div>
+           <div>
+            <label for="etageUpdate">Étage</label>
+            <input id="etageUpdate" name="etage" />
+           </div>
+        </div>
+        
+        <label for="typeSUpdate">Type</label>
+        <select id="typeSUpdate" name="typeS" required>
+          <option th:each="t : ${typeSalleList}" th:value="${t}" th:text="${t.dbValue}"></option>
+        </select>
+        
+        <label for="accesUpdate">Accès PMR (oui/non)</label>
+        <select id="accesUpdate" name="acces">
+          <option value="oui">Oui</option>
+          <option value="non">Non</option>
+        </select>
+        
+        <label for="batimentCodeUpdate">Bâtiment</label>
+        <select id="batimentCodeUpdate" name="batimentCode" required>
+          <option th:each="b : ${batimentList}" th:value="${b.codeB}" th:text="${b.codeB}"></option>
+        </select>
+        
+        <button type="submit" style="background: var(--secondary); color: var(--text);"><i class="fas fa-edit"></i> Mettre à jour</button>
+      </form>
+    </div>
+    
+    <div class="card" sec:authorize="hasRole('ADMIN')">
+      <h3>Supprimer</h3>
+      <form th:action="@{/salles/delete}" method="post">
+        <label for="numSDelete">Numéro de Salle</label>
+        <input id="numSDelete" name="numS" placeholder="Salle à supprimer" required />
+        
+        <button type="submit" style="background: var(--danger);"><i class="fas fa-trash-alt"></i> Supprimer</button>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>

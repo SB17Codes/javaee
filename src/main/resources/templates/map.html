@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <!-- Include the common head content from fragments -->
+    <th:block th:replace="~{fragments :: head('Carte des Bâtiments')}"></th:block>
+    <!-- Add Mapbox-specific CSS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+</head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+
+<main>
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <h2>Carte Interactive</h2>
+      <div class="small" id="mapMeta">Chargement...</div>
+    </div>
+    
+    <div class="map-wrap" data-token="" th:attr="data-token=${mapboxToken}" style="position: relative; overflow: hidden;">
+      <div id="map" class="map" style="width: 100%; height: 600px;"></div>
+      
+    </div>
+  </div>
+</main>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script>
+  (function () {
+    const container = document.querySelector(".map-wrap");
+    const notice = document.getElementById("mapNotice");
+    const meta = document.getElementById("mapMeta");
+    const token = container ? (container.dataset.token || "").trim() : "";
+    
+    
+    const setMeta = (msg) => {
+      if (meta) {
+        meta.innerHTML = `<i class="fas fa-info-circle"></i> ${msg}`;
+      }
+    };
+    
+    if (!window.mapboxgl) {
+      showNotice("Chargement Mapbox impossible. Vérifiez votre connexion.");
+      return;
+    }
+
+    mapboxgl.accessToken = token;
+    
+    try {
+        const map = new mapboxgl.Map({
+          container: "map",
+          style: "mapbox://styles/mapbox/dark-v11", /* Switched to light map for brutalist theme */
+          center: [3.875, 43.61],
+          zoom: 11.2
+        });
+    
+        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        
+        map.on("error", (e) => {
+          console.error("Mapbox error:", e);
+          const msg = e && e.error && e.error.message ? e.error.message : "Erreur Mapbox";
+        });
+    
+        const fetchJson = (url) => fetch(url).then((resp) => resp.json());
+
+        const extractPolygons = (geojson) => {
+          const polygons = [];
+          if (!geojson || !geojson.features) {
+            return polygons;
+          }
+          geojson.features.forEach((feature) => {
+            const geom = feature.geometry;
+            if (!geom) {
+              return;
+            }
+            if (geom.type === "Polygon") {
+              polygons.push(geom.coordinates);
+            } else if (geom.type === "MultiPolygon") {
+              geom.coordinates.forEach((poly) => polygons.push(poly));
+            }
+          });
+          return polygons;
+        };
+
+        const pointInRing = (point, ring) => {
+          let inside = false;
+          for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            const xi = ring[i][0], yi = ring[i][1];
+            const xj = ring[j][0], yj = ring[j][1];
+            const intersect = ((yi > point[1]) !== (yj > point[1])) &&
+              (point[0] < (xj - xi) * (point[1] - yi) / (yj - yi + 0.0) + xi);
+            if (intersect) inside = !inside;
+          }
+          return inside;
+        };
+
+        const pointInPolygon = (point, polygon) => {
+          if (!polygon || !polygon.length) return false;
+          if (!pointInRing(point, polygon[0])) return false;
+          for (let i = 1; i < polygon.length; i++) {
+            if (pointInRing(point, polygon[i])) return false;
+          }
+          return true;
+        };
+
+        const pointInAnyPolygon = (point, polygons) => {
+          for (const poly of polygons) {
+            if (pointInPolygon(point, poly)) return true;
+          }
+          return false;
+        };
+
+        map.on("load", () => {
+          const boundaryPromise = fetchJson("/api/campus-boundaries/geojson")
+            .then((boundaryData) => {
+              const polygons = extractPolygons(boundaryData);
+              if (polygons.length) {
+                map.addSource("campus-boundaries", { type: "geojson", data: boundaryData });
+                map.addLayer({
+                  id: "campus-boundaries-fill",
+                  type: "fill",
+                  source: "campus-boundaries",
+                  paint: {
+                    "fill-color": "#22c55e",
+                    "fill-opacity": 0.12
+                  }
+                });
+                map.addLayer({
+                  id: "campus-boundaries-line",
+                  type: "line",
+                  source: "campus-boundaries",
+                  paint: {
+                    "line-color": "#16a34a",
+                    "line-width": 2
+                  }
+                });
+              }
+              return polygons;
+            })
+            .catch(() => []);
+
+          Promise.all([boundaryPromise, fetchJson("/api/osm-buildings/geojson")])
+            .then(([polygons, osmData]) => {
+              if (!osmData || !osmData.features || !osmData.features.length) {
+                setMeta("Aucun bâtiment OSM disponible.");
+                return;
+              }
+              let filtered = osmData;
+              if (polygons && polygons.length) {
+                const features = osmData.features.filter((feature) => {
+                  const coords = feature.geometry && feature.geometry.coordinates;
+                  if (!coords || coords.length < 2) {
+                    return false;
+                  }
+                  return pointInAnyPolygon(coords, polygons);
+                });
+                filtered = { ...osmData, features };
+              }
+
+              if (!filtered.features.length) {
+                setMeta("Aucun bâtiment OSM dans la zone.");
+                return;
+              }
+              setMeta(`${filtered.features.length} bâtiments OSM chargés.`);
+
+              map.addSource("osm-buildings", {
+                type: "geojson",
+                data: filtered
+              });
+              map.addLayer({
+                id: "osm-buildings-circle",
+                type: "circle",
+                source: "osm-buildings",
+                paint: {
+                  "circle-radius": 5,
+                  "circle-color": "#fbbf24",
+                  "circle-stroke-width": 1,
+                  "circle-stroke-color": "#0f172a",
+                  "circle-opacity": 0.7
+                }
+              });
+
+              map.on("click", "osm-buildings-circle", (e) => {
+                const feature = e.features[0];
+                const props = feature.properties || {};
+                new mapboxgl.Popup()
+                  .setLngLat(feature.geometry.coordinates)
+                  .setHTML(
+                    `<strong>${props.name || "OSM building"}</strong><br/>` +
+                    `Campus: ${props.campus || "-"}`
+                  )
+                  .addTo(map);
+              });
+
+              map.on("mouseenter", "osm-buildings-circle", () => {
+                map.getCanvas().style.cursor = "pointer";
+              });
+
+              map.on("mouseleave", "osm-buildings-circle", () => {
+                map.getCanvas().style.cursor = "";
+              });
+            });
+    });
+    } catch (err) {
+        console.error("Map initialization error:", err);
+        showNotice("Erreur d'initialisation de la carte.");
+    }
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Data Hub')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+
+<main>
+  <div class="card">
+    <h2>Data Hub</h2>
+    <p class="small" style="color: var(--text-muted); margin-bottom: 24px;">Acces rapide aux entites et operations CRUD.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>Campus</h3>
+        <p class="small">Total: <strong th:text="${campusCount}">0</strong></p>
+        <a th:href="@{/campus}">Ouvrir</a>
+        <span sec:authorize="hasAnyRole('ADMIN','MANAGER')"> | <a th:href="@{/campus}">Creer</a></span>
+      </div>
+      <div class="card">
+        <h3>Batiments</h3>
+        <p class="small">Total: <strong th:text="${batimentCount}">0</strong></p>
+        <a th:href="@{/batiments}">Ouvrir</a>
+        <span sec:authorize="hasAnyRole('ADMIN','MANAGER')"> | <a th:href="@{/batiments}">Creer</a></span>
+      </div>
+      <div class="card">
+        <h3>Salles</h3>
+        <p class="small">Total: <strong th:text="${salleCount}">0</strong></p>
+        <a th:href="@{/salles}">Ouvrir</a>
+        <span sec:authorize="hasAnyRole('ADMIN','MANAGER')"> | <a th:href="@{/salles}">Creer</a></span>
+      </div>
+      <div class="card">
+        <h3>Composantes</h3>
+        <p class="small">Total: <strong th:text="${composanteCount}">0</strong></p>
+        <a th:href="@{/composantes}">Ouvrir</a>
+        <span sec:authorize="hasAnyRole('ADMIN','MANAGER')"> | <a th:href="@{/composantes}">Creer</a></span>
+      </div>
+      <div class="card">
+        <h3>Exploitations</h3>
+        <p class="small">Total: <strong th:text="${exploiteCount}">0</strong></p>
+        <a th:href="@{/exploitations}">Ouvrir</a>
+        <span sec:authorize="hasAnyRole('ADMIN','MANAGER')"> | <a th:href="@{/exploitations}">Creer</a></span>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

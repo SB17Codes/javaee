@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+  <th:block th:replace="~{fragments :: head('Itineraire')}"></th:block>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+</head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+
+<main>
+  <div class="card">
+    <h2>Itineraire Etudiant</h2>
+    <p class="small" style="color: var(--text-muted); margin-bottom: 24px;">
+      Importez votre emploi du temps (.ics) et choisissez une date pour generer un parcours.
+    </p>
+
+    <form th:action="@{/itinerary/upload}" method="post" enctype="multipart/form-data">
+      <label for="icsFile">Fichier .ics</label>
+      <input id="icsFile" type="file" name="file" accept=".ics" required />
+      <button type="submit">Importer</button>
+    </form>
+
+    <div class="card" th:if="${uploadedCount}">
+      <strong th:text="'Evenements importes: ' + ${uploadedCount}">Evenements importes</strong>
+    </div>
+    <div class="card" th:if="${error}">
+      <strong th:text="${error}">Erreur</strong>
+    </div>
+    <div class="card" th:if="${info}">
+      <strong th:text="${info}">Info</strong>
+    </div>
+  </div>
+
+  <div class="card" th:if="${availableDates}">
+    <h3>Choisir un jour</h3>
+    <form th:action="@{/itinerary/plan}" method="post">
+      <label for="daySelect">Date</label>
+      <select id="daySelect" name="date" required>
+        <option value="" disabled th:selected="${selectedDate == null}">Selectionner</option>
+        <option th:each="d : ${availableDates}"
+                th:value="${d}"
+                th:selected="${selectedDate != null and selectedDate.equals(d)}"
+                th:text="${#temporals.format(d, 'dd/MM/yyyy')}">
+          01/01/2026
+        </option>
+      </select>
+      <button type="submit">Generer</button>
+    </form>
+  </div>
+
+  <div class="card" th:if="${result != null}">
+    <h3>Parcours du jour</h3>
+    <div class="small" th:if="${result.events != null}"
+         th:text="'Cours: ' + ${result.events.size()} + ' | Distance totale: ' + ${#numbers.formatDecimal(result.totalDistanceKm, 1, 2)} + ' km | Marche: ' + ${result.totalWalkingMinutes} + ' min'">
+      Resume
+    </div>
+
+    <div class="table-container" style="margin-top: 16px;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Heure</th>
+            <th>Cours</th>
+            <th>Lieu</th>
+            <th>Correspondance</th>
+            <th>Avertissements</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="ev : ${result.events}">
+            <td th:text="${ev.end != null ? #temporals.format(ev.start, 'HH:mm') + ' - ' + #temporals.format(ev.end, 'HH:mm') : #temporals.format(ev.start, 'HH:mm')}">08:30</td>
+            <td th:text="${ev.summary}">Cours</td>
+            <td th:text="${ev.rawLocation}">Lieu</td>
+            <td>
+              <div th:if="${ev.roomId != null}" th:text="${ev.roomId}">Salle</div>
+              <div class="small" th:if="${ev.buildingCode != null}"
+                   th:text="'Batiment: ' + ${ev.buildingCode}">Batiment</div>
+              <div class="small" th:if="${ev.campusName != null}"
+                   th:text="'Campus: ' + ${ev.campusName}">Campus</div>
+            </td>
+            <td>
+              <div th:if="${#lists.isEmpty(ev.warnings)}">-</div>
+              <div th:each="w : ${ev.warnings}" th:text="${w}">Warn</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="waypointsData" style="display: none;">
+      <span class="waypoint"
+            th:each="ev : ${result.events}"
+            th:if="${ev.latitude != null or ev.longitude != null or ev.buildingCode != null}"
+            th:attr="data-lat=${ev.latitude}, data-lon=${ev.longitude}, data-building=${ev.buildingCode}, data-location=${ev.rawLocation}, data-label=${ev.summary}, data-time=${#temporals.format(ev.start, 'HH:mm')}">
+      </span>
+    </div>
+
+    <div class="table-container" style="margin-top: 24px;" th:if="${result.legs != null and !#lists.isEmpty(result.legs)}">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>De</th>
+            <th>Vers</th>
+            <th>Distance</th>
+            <th>Marche</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="leg : ${result.legs}">
+            <td th:text="${leg.from.summary} + ' (' + ${#temporals.format(leg.from.start, 'HH:mm')} + ')'">De</td>
+            <td th:text="${leg.to.summary} + ' (' + ${#temporals.format(leg.to.start, 'HH:mm')} + ')'">Vers</td>
+            <td th:text="${#numbers.formatDecimal(leg.distanceKm, 1, 2)} + ' km'">0.5 km</td>
+            <td th:text="${leg.walkingMinutes} + ' min'">6 min</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+      <h3>Carte</h3>
+      <div class="small" id="mapMeta">Chargement...</div>
+      <div class="map-wrap" data-token="" th:attr="data-token=${mapboxToken}" style="position: relative; overflow: hidden; margin-top: 16px;">
+        <div id="itineraryMap" class="map" style="width: 100%; height: 520px;"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script type="application/json" id="waypointsJson" th:utext="${waypointsJson}">[]</script>
+<script>
+  (function () {
+    const container = document.querySelector(".map-wrap");
+    if (!container) {
+      return;
+    }
+    const meta = document.getElementById("mapMeta");
+    const token = (container.dataset.token || "").trim();
+
+    const setMeta = (msg) => {
+      if (meta) {
+        meta.innerHTML = `<i class="fas fa-info-circle"></i> ${msg}`;
+      }
+    };
+
+    let waypoints = [];
+    try {
+      const raw = document.getElementById("waypointsJson");
+      waypoints = raw ? JSON.parse(raw.textContent || "[]") : [];
+    } catch (e) {
+      waypoints = [];
+    }
+
+    if (!waypoints.length) {
+      const nodes = document.querySelectorAll("#waypointsData .waypoint");
+      waypoints = Array.from(nodes).map((node) => ({
+        latitude: node.dataset.lat ? Number(node.dataset.lat) : null,
+        longitude: node.dataset.lon ? Number(node.dataset.lon) : null,
+        building: node.dataset.building || "",
+        location: node.dataset.location || "",
+        label: node.dataset.label || "",
+        timeLabel: node.dataset.time || ""
+      }));
+    }
+    if (!window.mapboxgl) {
+      setMeta("Mapbox indisponible.");
+      return;
+    }
+
+    mapboxgl.accessToken = token;
+
+    const extractNumber = (value) => {
+      if (!value) return null;
+      const match = String(value).match(/(\\d{1,3})/);
+      return match ? Number(match[1]) : null;
+    };
+
+    const fillMissingCoords = (points) => {
+      const missing = points.some((wp) => !Number.isFinite(Number(wp.latitude)) || !Number.isFinite(Number(wp.longitude)));
+      if (!missing) {
+        return Promise.resolve(points);
+      }
+      return fetch("/api/osm-buildings/geojson")
+        .then((resp) => resp.json())
+        .then((data) => {
+          const byName = new Map();
+          const byNumber = new Map();
+          if (data && data.features) {
+            data.features.forEach((feature) => {
+              const props = feature.properties || {};
+              const coords = feature.geometry && feature.geometry.coordinates;
+              if (!coords || coords.length < 2) {
+                return;
+              }
+              const name = (props.name || "").toString();
+              if (name) {
+                byName.set(name.toLowerCase(), coords);
+              }
+              const number = extractNumber(name);
+              if (Number.isFinite(number) && !byNumber.has(number)) {
+                byNumber.set(number, coords);
+              }
+            });
+          }
+          return points.map((wp) => {
+            if (Number.isFinite(Number(wp.latitude)) && Number.isFinite(Number(wp.longitude))) {
+              return { ...wp, latitude: Number(wp.latitude), longitude: Number(wp.longitude) };
+            }
+            const buildingName = (wp.building || "").toString().toLowerCase();
+            if (buildingName && byName.has(buildingName)) {
+              const coords = byName.get(buildingName);
+              return { ...wp, latitude: coords[1], longitude: coords[0] };
+            }
+            const num = extractNumber(wp.building) ?? extractNumber(wp.location);
+            if (Number.isFinite(num) && byNumber.has(num)) {
+              const coords = byNumber.get(num);
+              return { ...wp, latitude: coords[1], longitude: coords[0] };
+            }
+            return wp;
+          });
+        })
+        .catch(() => points);
+    };
+
+    const center = waypoints.length && Number.isFinite(Number(waypoints[0].latitude)) && Number.isFinite(Number(waypoints[0].longitude))
+      ? [Number(waypoints[0].longitude), Number(waypoints[0].latitude)]
+      : [3.875, 43.61];
+
+    const map = new mapboxgl.Map({
+      container: "itineraryMap",
+      style: "mapbox://styles/mapbox/light-v11",
+      center,
+      zoom: 11.2
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+    map.on("load", () => {
+      fetch("/api/campus-boundaries/geojson")
+        .then((resp) => resp.json())
+        .then((boundaryData) => {
+          if (!boundaryData || !boundaryData.features || !boundaryData.features.length) {
+            return;
+          }
+          map.addSource("campus-boundaries", { type: "geojson", data: boundaryData });
+          map.addLayer({
+            id: "campus-boundaries-fill",
+            type: "fill",
+            source: "campus-boundaries",
+            paint: {
+              "fill-color": "#22c55e",
+              "fill-opacity": 0.12
+            }
+          });
+          map.addLayer({
+            id: "campus-boundaries-line",
+            type: "line",
+            source: "campus-boundaries",
+            paint: {
+              "line-color": "#16a34a",
+              "line-width": 2
+            }
+          });
+        })
+        .catch(() => {});
+
+      fillMissingCoords(waypoints).then((filled) => {
+        const ordered = filled.filter((wp) => Number.isFinite(Number(wp.latitude)) && Number.isFinite(Number(wp.longitude)));
+        if (!ordered.length) {
+          setMeta("Aucun point a afficher.");
+          return;
+        }
+        setMeta(`${ordered.length} lieux charges.`);
+
+        const bounds = new mapboxgl.LngLatBounds();
+        const pathCoords = [];
+        const seen = new Set();
+        ordered.forEach((wp) => {
+          const lng = Number(wp.longitude);
+          const lat = Number(wp.latitude);
+          const key = `${lng.toFixed(6)},${lat.toFixed(6)}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            pathCoords.push([lng, lat]);
+          }
+        });
+
+        const drawDirections = (coords) => {
+          if (coords.length < 2) {
+            return;
+          }
+          const limited = coords.slice(0, 25);
+          const coordStr = limited.map((c) => `${c[0]},${c[1]}`).join(";");
+          const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordStr}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
+          fetch(url)
+            .then((resp) => resp.json())
+            .then((data) => {
+              const route = data && data.routes && data.routes[0];
+              if (!route || !route.geometry) {
+                return;
+              }
+              if (map.getSource("itinerary-path")) {
+                map.removeLayer("itinerary-path-line");
+                map.removeSource("itinerary-path");
+              }
+              map.addSource("itinerary-path", {
+                type: "geojson",
+                data: {
+                  type: "Feature",
+                  geometry: route.geometry
+                }
+              });
+              map.addLayer({
+                id: "itinerary-path-line",
+                type: "line",
+                source: "itinerary-path",
+                paint: {
+                  "line-color": "#f59e0b",
+                  "line-width": 3,
+                  "line-opacity": 0.9
+                }
+              });
+            })
+            .catch(() => {});
+        };
+
+        drawDirections(pathCoords);
+
+        const grouped = new Map();
+        ordered.forEach((wp) => {
+          const key = `${Number(wp.latitude).toFixed(6)},${Number(wp.longitude).toFixed(6)}`;
+          if (!grouped.has(key)) {
+            grouped.set(key, { latitude: Number(wp.latitude), longitude: Number(wp.longitude), items: [] });
+          }
+          grouped.get(key).items.push(wp);
+        });
+
+        const groups = Array.from(grouped.values());
+        groups.forEach((group) => {
+          const color = "#111111";
+          const rowsHtml = group.items
+            .map((item) => `<div><span style="font-weight:700;">${item.timeLabel || ""}</span> ${item.label || "Cours"}</div>`)
+            .join("");
+          const popupHtml = `<div style="font-weight:700; margin-bottom:6px;">Cours ici</div><div>${rowsHtml}</div>`;
+
+          new mapboxgl.Marker({ color })
+            .setLngLat([group.longitude, group.latitude])
+            .setPopup(new mapboxgl.Popup().setHTML(popupHtml))
+            .addTo(map);
+          bounds.extend([group.longitude, group.latitude]);
+        });
+
+        if (ordered.length === 1) {
+          map.setCenter([Number(ordered[0].longitude), Number(ordered[0].latitude)]);
+          map.setZoom(15);
+        } else {
+          map.fitBounds(bounds, { padding: 60, maxZoom: 16 });
+        }
+      });
+    });
+  })();
+</script>
+</body>
+</html>

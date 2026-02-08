@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Campus UM - Dashboard')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+
+<main>
+  <div class="card">
+    <h2>Tableau de bord</h2>
+    <p class="small" style="color: var(--text-muted); margin-bottom: 24px;">Apercu general des ressources du campus</p>
+
+    <div class="dashboard-grid">
+      <div class="stat-card">
+        <div class="stat-title">Campus</div>
+        <div class="stat-value" th:text="${campusCount}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Batiments</div>
+        <div class="stat-value" th:text="${batimentCount}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Salles</div>
+        <div class="stat-value" th:text="${salleCount}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Composantes</div>
+        <div class="stat-value" th:text="${composanteCount}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Exploitations</div>
+        <div class="stat-value" th:text="${exploiteCount}">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Acces rapide</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Data Hub</h3>
+        <p class="small">Toutes les entites et operations CRUD.</p>
+        <a th:href="@{/data}">Ouvrir</a>
+      </div>
+      <div class="card">
+        <h3>Analytics Hub</h3>
+        <p class="small">Requetes, distance, carte.</p>
+        <a th:href="@{/analytics}">Ouvrir</a>
+      </div>
+      <div class="card">
+        <h3>Carte</h3>
+        <p class="small">Visualisation geographique des batiments.</p>
+        <a th:href="@{/map}">Ouvrir</a>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

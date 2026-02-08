@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title th:text="${title}">Campus UM</title>
+    <link rel="stylesheet" th:href="@{/style.css}" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+<header th:fragment="header">
+    <div class="header-row">
+        <div class="logo-section">
+            <i class="fas fa-university fa-lg"></i>
+            <h1>Campus Manager</h1>
+        </div>
+        <div class="user-panel">
+            <div class="user-info">
+                <span class="user-name" sec:authentication="name">User</span>
+                <span class="user-role" sec:authentication="authorities">ROLE</span>
+            </div>
+            <a class="logout-btn" th:href="@{/logout}">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+    </div>
+    <nav>
+        <a th:href="@{/}" th:classappend="${currentPath == '/' ? 'active' : ''}">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+        <a th:href="@{/data}" th:classappend="${currentPath.startsWith('/data') ? 'active' : ''}">
+            <i class="fas fa-database"></i> Data
+        </a>
+        <a th:href="@{/analytics}" th:classappend="${currentPath.startsWith('/analytics') ? 'active' : ''}">
+            <i class="fas fa-chart-line"></i> Analytics
+        </a>
+        <a th:href="@{/map}" th:classappend="${currentPath.startsWith('/map') ? 'active' : ''}">
+            <i class="fas fa-map-marked-alt"></i> Carte
+        </a>
+    </nav>
+</header>
+</body>
+</html>

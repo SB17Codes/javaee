@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Gestion des Bâtiments')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+
+<main>
+  <a class="small" th:href="@{/data}">← Back to Data Hub</a>
+
+<div class="card">
+    <h2>Liste des Bâtiments</h2>
+    <div class="table-container">
+      <table class="table">
+        <thead>
+        <tr>
+          <th>Code</th>
+          <th>Année de construction</th>
+          <th>Latitude</th>
+          <th>Longitude</th>
+          <th>Campus</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="b : ${batimentList}">
+          <td th:text="${b.codeB}" style="font-weight: 700; color: var(--primary);"></td>
+          <td th:text="${b.anneeC}"></td>
+          <td th:text="${b.latitude}"></td>
+          <td th:text="${b.longitude}"></td>
+          <td th:text="${b.campus != null ? b.campus.nomC : '-'}"></td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(batimentList)}">
+          <td colspan="5" class="text-center small" style="color: var(--text-muted);">Aucun bâtiment trouvé</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid" sec:authorize="hasAnyRole('ADMIN','MANAGER')">
+    <div class="card">
+      <h3>Ajouter un Bâtiment</h3>
+      <form th:action="@{/batiments/create}" method="post">
+        <label for="codeB">Code du Bâtiment</label>
+        <input id="codeB" name="codeB" placeholder="Ex: B36" required />
+        
+        <label for="anneeC">Année de construction</label>
+        <input id="anneeC" name="anneeC" type="number" placeholder="Ex: 2023" />
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label for="latitude">Latitude</label>
+            <input id="latitude" name="latitude" type="number" step="0.000001" placeholder="0.00" />
+          </div>
+          <div>
+            <label for="longitude">Longitude</label>
+            <input id="longitude" name="longitude" type="number" step="0.000001" placeholder="0.00" />
+          </div>
+        </div>
+
+        <label for="campusNom">Campus</label>
+        <select id="campusNom" name="campusNom" required>
+          <option value="" disabled selected>Sélectionnez un campus</option>
+          <option th:each="c : ${campusList}" th:value="${c.nomC}" th:text="${c.nomC}"></option>
+        </select>
+        
+        <button type="submit"><i class="fas fa-plus"></i> Créer</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Modifier un Bâtiment</h3>
+      <form th:action="@{/batiments/update}" method="post">
+        <label for="codeBUpdate">Code du Bâtiment</label>
+        <input id="codeBUpdate" name="codeB" placeholder="Code existant" required />
+        
+        <label for="anneeCUpdate">Année de construction</label>
+        <input id="anneeCUpdate" name="anneeC" type="number" />
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label for="latitudeUpdate">Latitude</label>
+            <input id="latitudeUpdate" name="latitude" type="number" step="0.000001" />
+          </div>
+          <div>
+            <label for="longitudeUpdate">Longitude</label>
+            <input id="longitudeUpdate" name="longitude" type="number" step="0.000001" />
+          </div>
+        </div>
+        
+        <label for="campusNomUpdate">Campus</label>
+        <select id="campusNomUpdate" name="campusNom" required>
+          <option value="" disabled selected>Sélectionnez un campus</option>
+          <option th:each="c : ${campusList}" th:value="${c.nomC}" th:text="${c.nomC}"></option>
+        </select>
+        
+        <button type="submit" style="background: var(--secondary); color: var(--text);"><i class="fas fa-edit"></i> Mettre à jour</button>
+      </form>
+    </div>
+    
+    <div class="card" sec:authorize="hasRole('ADMIN')">
+      <h3>Supprimer</h3>
+      <form th:action="@{/batiments/delete}" method="post">
+        <label for="codeBDelete">Code du Bâtiment</label>
+        <input id="codeBDelete" name="codeB" placeholder="Bâtiment à supprimer" required />
+        
+        <button type="submit" style="background: var(--danger);"><i class="fas fa-trash-alt"></i> Supprimer</button>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>

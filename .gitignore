@@ -1,0 +1,10 @@
+.firecrawl/
+.DS_Store
+.idea/
+.vscode/
+.venv-cadastre/
+data/
+target/
+*.iml
+*.log
+*.tmp

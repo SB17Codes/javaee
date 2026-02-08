@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Analytics Hub')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+
+<main>
+  <div class="card">
+    <h2>Analytics Hub</h2>
+    <p class="small" style="color: var(--text-muted); margin-bottom: 24px;">Acces rapide aux recherches et analyses.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>Requetes</h3>
+        <p class="small">Recherches avancees sur campus, batiments, salles.</p>
+        <a th:href="@{/queries}">Ouvrir</a>
+      </div>
+      <div class="card">
+        <h3>Distance</h3>
+        <p class="small">Calculer la distance entre deux batiments.</p>
+        <a th:href="@{/distance}">Ouvrir</a>
+      </div>
+      <div class="card">
+        <h3>Carte</h3>
+        <p class="small">Visualiser les batiments sur la carte.</p>
+        <a th:href="@{/map}">Ouvrir</a>
+      </div>
+      <div class="card">
+        <h3>Itineraire Etudiant</h3>
+        <p class="small">Importer un .ics et generer un parcours quotidien.</p>
+        <a th:href="@{/itinerary}">Ouvrir</a>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

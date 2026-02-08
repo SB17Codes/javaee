@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Calcul de Distance')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+
+<main>
+  <a class="small" th:href="@{/analytics}">← Back to Analytics Hub</a>
+
+<div class="card">
+    <h2>Calcul de distance</h2>
+    <form method="get" th:action="@{/distance}" class="grid" style="align-items: end;">
+      <div>
+        <label for="from">Bâtiment de départ</label>
+        <select id="from" name="from" required>
+          <option value="" disabled selected>Choisir le point A</option>
+          <option th:each="b : ${batimentList}" th:value="${b.codeB}" th:text="${b.codeB}"></option>
+        </select>
+      </div>
+      <div>
+        <label for="to">Bâtiment d'arrivée</label>
+        <select id="to" name="to" required>
+          <option value="" disabled selected>Choisir le point B</option>
+          <option th:each="b : ${batimentList}" th:value="${b.codeB}" th:text="${b.codeB}"></option>
+        </select>
+      </div>
+      <button type="submit" style="margin-bottom: 1.5rem; height: 3.5rem;"><i class="fas fa-calculator"></i> Calculer la distance</button>
+    </form>
+  </div>
+
+  <div class="card" th:if="${message}">
+    <strong th:text="${message}"></strong>
+  </div>
+
+  <div class="card text-center" th:if="${distanceKm != null}">
+    <h3>Résultat du calcul</h3>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 2rem; margin: 2rem 0; flex-wrap: wrap;">
+      <div style="background: var(--bg); padding: 1rem 2rem; border: 2px solid var(--border); box-shadow: 4px 4px 0 var(--border);">
+        <i class="fas fa-building" style="color: var(--text-muted); margin-right: 0.5rem;"></i>
+        <strong th:text="${fromBatiment.codeB}" style="font-size: 1.5rem;"></strong>
+      </div>
+      <i class="fas fa-arrow-right" style="color: var(--primary); font-size: 2rem;"></i>
+      <div style="background: var(--bg); padding: 1rem 2rem; border: 2px solid var(--border); box-shadow: 4px 4px 0 var(--border);">
+        <i class="fas fa-building" style="color: var(--text-muted); margin-right: 0.5rem;"></i>
+        <strong th:text="${toBatiment.codeB}" style="font-size: 1.5rem;"></strong>
+      </div>
+    </div>
+    
+    <div style="margin: 3rem 0;">
+      <div style="font-size: 1rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Distance</div>
+      <div class="stat-value">
+        <span th:text="${#numbers.formatDecimal(distanceKm, 1, 2)}"></span> <span style="font-size: 1.5rem; color: var(--text-muted);">km</span>
+      </div>
+    </div>
+    
+    <div style="display: flex; justify-content: center;">
+        <p class="small" th:if="${sameCampus}" style="background: var(--accent); color: white; padding: 0.5rem 1rem; border: 2px solid var(--border); box-shadow: 3px 3px 0 var(--border); display: inline-flex; align-items: center; gap: 0.5rem;">
+          <i class="fas fa-check-circle"></i> Les deux bâtiments sont sur le même campus.
+        </p>
+        <p class="small" th:if="${sameCampus == false}" style="background: var(--secondary); color: var(--text); padding: 0.5rem 1rem; border: 2px solid var(--border); box-shadow: 3px 3px 0 var(--border); display: inline-flex; align-items: center; gap: 0.5rem;">
+          <i class="fas fa-info-circle"></i> Les deux bâtiments sont sur des campus différents.
+        </p>
+    </div>
+  </div>
+</main>
+</body>
+</html>
