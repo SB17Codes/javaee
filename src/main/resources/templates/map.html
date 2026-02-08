@@ -15,10 +15,34 @@
       <h2>Carte Interactive</h2>
       <div class="small" id="mapMeta">Chargement...</div>
     </div>
-    
+
+    <div style="margin-bottom: 1.5rem;">
+      <div class="grid" style="margin-bottom: 1rem;">
+        <div>
+          <label for="campusFilter">Campus</label>
+          <select id="campusFilter">
+            <option value="">Tous les campus</option>
+          </select>
+        </div>
+        <div>
+          <label for="fromBuilding">Départ</label>
+          <select id="fromBuilding">
+            <option value="">Choisir un bâtiment</option>
+          </select>
+        </div>
+        <div>
+          <label for="toBuilding">Arrivée</label>
+          <select id="toBuilding">
+            <option value="">Choisir un bâtiment</option>
+          </select>
+        </div>
+      </div>
+      <button type="button" id="routeBtn"><i class="fas fa-route"></i> Calculer l’itinéraire</button>
+      <div class="small" id="routeMeta" style="margin-top: 0.75rem;"></div>
+    </div>
+
     <div class="map-wrap" data-token="" th:attr="data-token=${mapboxToken}" style="position: relative; overflow: hidden;">
       <div id="map" class="map" style="width: 100%; height: 600px;"></div>
-      
     </div>
   </div>
 </main>
@@ -27,8 +51,12 @@
 <script>
   (function () {
     const container = document.querySelector(".map-wrap");
-    const notice = document.getElementById("mapNotice");
     const meta = document.getElementById("mapMeta");
+    const routeMeta = document.getElementById("routeMeta");
+    const campusFilter = document.getElementById("campusFilter");
+    const fromSelect = document.getElementById("fromBuilding");
+    const toSelect = document.getElementById("toBuilding");
+    const routeBtn = document.getElementById("routeBtn");
     const token = container ? (container.dataset.token || "").trim() : "";
     
     
@@ -36,6 +64,16 @@
       if (meta) {
         meta.innerHTML = `<i class="fas fa-info-circle"></i> ${msg}`;
       }
+    };
+
+    const setRouteMeta = (msg) => {
+      if (routeMeta) {
+        routeMeta.innerHTML = msg || "";
+      }
+    };
+
+    const showNotice = (msg) => {
+      setMeta(msg);
     };
     
     if (!window.mapboxgl) {
@@ -61,6 +99,50 @@
         });
     
         const fetchJson = (url) => fetch(url).then((resp) => resp.json());
+
+        const batiments = [];
+        const batimentByCode = new Map();
+        const campusSet = new Set();
+
+        const normalizeLabel = (text) => (text || "").trim();
+        const formatLabel = (b) => {
+          const parts = [];
+          const name = normalizeLabel(b.name) || normalizeLabel(b.codeB) || "Bâtiment";
+          parts.push(name);
+          if (b.buildingNumber !== null && b.buildingNumber !== undefined) {
+            parts.push(`B${String(b.buildingNumber).padStart(2, "0")}`);
+          }
+          if (b.campus) {
+            parts.push(b.campus);
+          }
+          return parts.join(" · ");
+        };
+
+        const fillSelect = (select, items, placeholder) => {
+          if (!select) {
+            return;
+          }
+          select.innerHTML = "";
+          const placeholderOption = document.createElement("option");
+          placeholderOption.value = "";
+          placeholderOption.textContent = placeholder;
+          select.appendChild(placeholderOption);
+          items.forEach((item) => {
+            const option = document.createElement("option");
+            option.value = item.codeB;
+            option.textContent = formatLabel(item);
+            select.appendChild(option);
+          });
+        };
+
+        const syncSelectors = () => {
+          const campusValue = campusFilter ? campusFilter.value : "";
+          const filtered = campusValue
+            ? batiments.filter((b) => b.campus === campusValue)
+            : batiments.slice();
+          fillSelect(fromSelect, filtered, "Choisir un bâtiment");
+          fillSelect(toSelect, filtered, "Choisir un bâtiment");
+        };
 
         const extractPolygons = (geojson) => {
           const polygons = [];
@@ -138,68 +220,178 @@
             })
             .catch(() => []);
 
-          Promise.all([boundaryPromise, fetchJson("/api/osm-buildings/geojson")])
-            .then(([polygons, osmData]) => {
-              if (!osmData || !osmData.features || !osmData.features.length) {
-                setMeta("Aucun bâtiment OSM disponible.");
+          Promise.all([boundaryPromise, fetchJson("/api/batiments/geojson")])
+            .then(([polygons, batimentData]) => {
+              if (!batimentData || !batimentData.features || !batimentData.features.length) {
+                setMeta("Aucun bâtiment disponible.");
                 return;
               }
-              let filtered = osmData;
+              let filtered = batimentData;
               if (polygons && polygons.length) {
-                const features = osmData.features.filter((feature) => {
+                const features = batimentData.features.filter((feature) => {
                   const coords = feature.geometry && feature.geometry.coordinates;
                   if (!coords || coords.length < 2) {
                     return false;
                   }
                   return pointInAnyPolygon(coords, polygons);
                 });
-                filtered = { ...osmData, features };
+                filtered = { ...batimentData, features };
               }
 
               if (!filtered.features.length) {
-                setMeta("Aucun bâtiment OSM dans la zone.");
+                setMeta("Aucun bâtiment dans la zone.");
                 return;
               }
-              setMeta(`${filtered.features.length} bâtiments OSM chargés.`);
 
-              map.addSource("osm-buildings", {
+              filtered.features.forEach((feature) => {
+                const props = feature.properties || {};
+                const coords = feature.geometry && feature.geometry.coordinates;
+                if (!coords || coords.length < 2) {
+                  return;
+                }
+                const entry = {
+                  codeB: props.codeB,
+                  name: props.name,
+                  buildingNumber: props.buildingNumber,
+                  campus: props.campus,
+                  lng: coords[0],
+                  lat: coords[1]
+                };
+                batiments.push(entry);
+                if (entry.codeB) {
+                  batimentByCode.set(entry.codeB, entry);
+                }
+                if (entry.campus) {
+                  campusSet.add(entry.campus);
+                }
+              });
+
+              setMeta(`${filtered.features.length} bâtiments chargés.`);
+
+              const sortedCampus = Array.from(campusSet).sort();
+              if (campusFilter) {
+                sortedCampus.forEach((campus) => {
+                  const option = document.createElement("option");
+                  option.value = campus;
+                  option.textContent = campus;
+                  campusFilter.appendChild(option);
+                });
+              }
+              syncSelectors();
+
+              if (campusFilter) {
+                campusFilter.addEventListener("change", () => {
+                  syncSelectors();
+                });
+              }
+
+              map.addSource("batiments", {
                 type: "geojson",
                 data: filtered
               });
               map.addLayer({
-                id: "osm-buildings-circle",
+                id: "batiments-circle",
                 type: "circle",
-                source: "osm-buildings",
+                source: "batiments",
                 paint: {
                   "circle-radius": 5,
-                  "circle-color": "#fbbf24",
+                  "circle-color": "#2563eb",
                   "circle-stroke-width": 1,
                   "circle-stroke-color": "#0f172a",
                   "circle-opacity": 0.7
                 }
               });
 
-              map.on("click", "osm-buildings-circle", (e) => {
+              map.on("click", "batiments-circle", (e) => {
                 const feature = e.features[0];
                 const props = feature.properties || {};
+                const label = normalizeLabel(props.name) || normalizeLabel(props.codeB) || "Bâtiment";
                 new mapboxgl.Popup()
                   .setLngLat(feature.geometry.coordinates)
                   .setHTML(
-                    `<strong>${props.name || "OSM building"}</strong><br/>` +
+                    `<strong>${label}</strong><br/>` +
                     `Campus: ${props.campus || "-"}`
                   )
                   .addTo(map);
               });
 
-              map.on("mouseenter", "osm-buildings-circle", () => {
+              map.on("mouseenter", "batiments-circle", () => {
                 map.getCanvas().style.cursor = "pointer";
               });
 
-              map.on("mouseleave", "osm-buildings-circle", () => {
+              map.on("mouseleave", "batiments-circle", () => {
                 map.getCanvas().style.cursor = "";
               });
             });
-    });
+
+          if (routeBtn) {
+            routeBtn.addEventListener("click", () => {
+              if (!fromSelect || !toSelect) {
+                return;
+              }
+              const fromCode = fromSelect.value;
+              const toCode = toSelect.value;
+              if (!fromCode || !toCode) {
+                setRouteMeta("Sélectionnez un bâtiment de départ et d’arrivée.");
+                return;
+              }
+              const from = batimentByCode.get(fromCode);
+              const to = batimentByCode.get(toCode);
+              if (!from || !to) {
+                setRouteMeta("Bâtiment introuvable pour l’itinéraire.");
+                return;
+              }
+
+              const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${from.lng},${from.lat};${to.lng},${to.lat}?geometries=geojson&overview=full&access_token=${encodeURIComponent(token)}`;
+              setRouteMeta("Calcul de l’itinéraire en cours...");
+              fetch(url)
+                .then((resp) => resp.json())
+                .then((data) => {
+                  if (!data || !data.routes || !data.routes.length) {
+                    setRouteMeta("Itinéraire introuvable.");
+                    return;
+                  }
+                  const route = data.routes[0];
+                  const geojson = {
+                    type: "Feature",
+                    geometry: route.geometry
+                  };
+                  if (map.getSource("route")) {
+                    map.getSource("route").setData(geojson);
+                  } else {
+                    map.addSource("route", {
+                      type: "geojson",
+                      data: geojson
+                    });
+                    map.addLayer({
+                      id: "route-line",
+                      type: "line",
+                      source: "route",
+                      layout: {
+                        "line-join": "round",
+                        "line-cap": "round"
+                      },
+                      paint: {
+                        "line-color": "#f97316",
+                        "line-width": 4,
+                        "line-opacity": 0.85
+                      }
+                    });
+                  }
+                  const distanceKm = (route.distance / 1000).toFixed(2);
+                  const durationMin = Math.round(route.duration / 60);
+                  setRouteMeta(`Distance: ${distanceKm} km · Temps estimé: ${durationMin} min`);
+
+                  const bounds = new mapboxgl.LngLatBounds();
+                  route.geometry.coordinates.forEach((coord) => bounds.extend(coord));
+                  map.fitBounds(bounds, { padding: 60 });
+                })
+                .catch(() => {
+                  setRouteMeta("Erreur lors du calcul de l’itinéraire.");
+                });
+            });
+          }
+        });
     } catch (err) {
         console.error("Map initialization error:", err);
         showNotice("Erreur d'initialisation de la carte.");

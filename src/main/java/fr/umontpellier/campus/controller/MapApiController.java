@@ -35,6 +35,8 @@ public class MapApiController {
 
       Map<String, Object> props = new HashMap<>();
       props.put("codeB", b.getCodeB());
+      props.put("name", b.getName());
+      props.put("buildingNumber", b.getBuildingNumber());
       props.put("anneeC", b.getAnneeC());
       props.put("campus", b.getCampus() != null ? b.getCampus().getNomC() : "-");
       feature.put("properties", props);
